@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#16131f" />
+    <meta name="description" content="FACELOGで同期した表情差分をスマートフォンから閲覧します。" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https://res.cloudinary.com; connect-src 'self' https://res.cloudinary.com; style-src 'self'; script-src 'self'; manifest-src 'self';" />
+    <title>表情差分</title>
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="config.js" defer></script>
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="app-header">
+        <button id="backButton" class="icon-button back-button" type="button" aria-label="セット一覧へ戻る" hidden>←</button>
+        <div class="title-block">
+          <p class="eyebrow">FACELOG VIEWER</p>
+          <h1 id="pageTitle">表情差分</h1>
+          <p id="pageSubtitle" class="page-subtitle" hidden></p>
+        </div>
+        <button id="refreshButton" class="icon-button" type="button" aria-label="最新データを再読み込み">↻</button>
+      </header>
+
+      <main>
+        <section id="statusPanel" class="status-panel" aria-live="polite">
+          <div class="spinner" aria-hidden="true"></div>
+          <p id="statusMessage">同期済みデータを読み込んでいます…</p>
+        </section>
+
+        <section id="characterView" hidden>
+          <label class="search-box">
+            <span aria-hidden="true">⌕</span>
+            <input id="characterSearch" type="search" inputmode="search" autocomplete="off" placeholder="セットを検索" aria-label="セットを検索" />
+          </label>
+          <p id="updatedAt" class="updated-at"></p>
+          <section id="favoriteSetSection" class="set-section" hidden>
+            <h2 class="section-title">★ 現行 <span id="favoriteSetCount"></span></h2>
+            <div id="favoriteSetList" class="character-list"></div>
+          </section>
+          <h2 class="section-title">すべてのセット</h2>
+          <div id="characterList" class="character-list"></div>
+          <p id="characterEmpty" class="empty-state" hidden>一致するセットがありません。</p>
+        </section>
+
+        <section id="expressionView" hidden>
+          <div class="expression-controls">
+            <div id="variantSwitcher" class="variant-switcher" role="group" aria-label="バリエーション"></div>
+            <label class="frequent-filter">
+              <input id="frequentOnly" type="checkbox" />
+              <span>よく使う差分のみ</span>
+            </label>
+          </div>
+          <div id="expressionGrid" class="expression-grid"></div>
+          <div id="gridSentinel" class="grid-sentinel" aria-hidden="true"></div>
+          <p id="expressionEmpty" class="empty-state" hidden>表情差分がありません。</p>
+        </section>
+      </main>
+    </div>
+
+    <div id="setupDialog" class="setup-backdrop" role="dialog" aria-modal="true" aria-labelledby="setupTitle" hidden>
+      <form id="setupForm" class="setup-card">
+        <p class="eyebrow">初回設定</p>
+        <h2 id="setupTitle">Cloud nameを入力</h2>
+        <p>Cloudinary Consoleに表示されるCloud nameです。API secretはViewerへ入力しません。</p>
+        <label>
+          <span>Cloud name</span>
+          <input id="cloudNameInput" type="text" autocomplete="off" autocapitalize="none" required />
+        </label>
+        <p id="setupError" class="form-error" aria-live="polite"></p>
+        <button class="primary-button" type="submit">Viewerを開く</button>
+      </form>
+    </div>
+
+    <div id="lightbox" class="lightbox" role="dialog" aria-modal="true" aria-labelledby="lightboxName" hidden>
+      <div class="lightbox-toolbar">
+        <p id="lightboxCounter"></p>
+        <button id="closeLightbox" class="icon-button lightbox-close" type="button" aria-label="画像プレビューを閉じる">×</button>
+      </div>
+      <button id="previousExpression" class="nav-button previous" type="button" aria-label="前の表情">‹</button>
+      <figure class="lightbox-figure">
+        <div id="fullImageLoading" class="full-image-loading">画像を読み込んでいます…</div>
+        <img id="fullImage" alt="" />
+        <figcaption id="lightboxName"></figcaption>
+      </figure>
+      <button id="nextExpression" class="nav-button next" type="button" aria-label="次の表情">›</button>
+    </div>
+
+    <template id="characterCardTemplate">
+      <button class="character-card" type="button">
+        <span class="character-monogram" aria-hidden="true"></span>
+        <span class="character-copy">
+          <strong></strong>
+          <small class="character-subtitle"></small>
+          <small class="expression-count"></small>
+        </span>
+        <span class="card-chevron" aria-hidden="true">›</span>
+      </button>
+    </template>
+
+    <template id="expressionCardTemplate">
+      <button class="expression-card" type="button">
+        <span class="thumbnail-frame">
+          <span class="thumbnail-placeholder">読み込み中</span>
+          <img alt="" loading="lazy" decoding="async" />
+        </span>
+        <strong></strong>
+      </button>
+    </template>
+  </body>
+</html>

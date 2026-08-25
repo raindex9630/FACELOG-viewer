@@ -11,6 +11,7 @@
   --accent-warm: #ee79ad;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --header-height: 78px;
 }
 
 * { box-sizing: border-box; }
@@ -38,11 +39,12 @@ button:focus-visible, input:focus-visible { outline: 3px solid rgba(181, 145, 25
 .app-header {
   position: sticky;
   z-index: 20;
-  top: 0;
+  top: var(--safe-top);
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 18px 0 14px;
+  margin-inline: -14px;
+  padding: 18px 14px 14px;
   background: linear-gradient(#16131f 72%, transparent);
 }
 
@@ -127,15 +129,15 @@ h1 { margin: 0; font-size: clamp(1.42rem, 6vw, 2.15rem); line-height: 1.13; }
 .expression-controls {
   position: sticky;
   z-index: 15;
-  top: calc(var(--safe-top) + 78px);
+  top: calc(var(--safe-top) + var(--header-height));
   display: grid;
-  gap: 8px;
+  gap: 6px;
   margin: -2px 0 12px;
-  padding: 8px 0 10px;
+  padding: 6px 0 8px;
   background: linear-gradient(#16131f 82%, transparent);
 }
-.variant-switcher { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(72px, 1fr); gap: 6px; overflow-x: auto; }
-.variant-button { min-height: 44px; padding: 6px 14px; border: 1px solid var(--line); border-radius: 13px; background: rgba(48, 41, 65, .88); cursor: pointer; }
+.variant-switcher { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(58px, max-content); justify-content: start; gap: 6px; overflow-x: auto; }
+.variant-button { min-height: 36px; padding: 4px 12px; border: 1px solid var(--line); border-radius: 11px; background: rgba(48, 41, 65, .88); font-size: .9rem; cursor: pointer; }
 .variant-button[aria-pressed="true"] { border-color: #c8b3ff; background: linear-gradient(135deg, #9d73f4, #bd6ba9); color: #fff; font-weight: 800; }
 .frequent-filter { width: fit-content; min-height: 44px; display: flex; align-items: center; gap: 9px; padding: 4px 8px 4px 3px; color: var(--muted); font-size: .82rem; cursor: pointer; }
 .frequent-filter input { width: 22px; height: 22px; accent-color: var(--accent); }
@@ -175,6 +177,7 @@ h1 { margin: 0; font-size: clamp(1.42rem, 6vw, 2.15rem); line-height: 1.13; }
 
 @media (min-width: 560px) {
   .app-shell { padding-inline: 24px; }
+  .app-header { margin-inline: -24px; padding-inline: 24px; }
   .character-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .expression-grid { gap: 14px; }
 }

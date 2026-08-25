@@ -26,12 +26,13 @@
   const elements = {};
   let imageObserver = null;
   let gridObserver = null;
+  let headerResizeObserver = null;
 
   document.addEventListener("DOMContentLoaded", initialize);
 
   function initialize() {
     for (const id of [
-      "backButton", "refreshButton", "pageTitle", "pageSubtitle", "statusPanel",
+      "appHeader", "backButton", "refreshButton", "pageTitle", "pageSubtitle", "statusPanel",
       "statusMessage", "characterView", "characterSearch", "updatedAt", "characterList",
       "favoriteSetSection", "favoriteSetList", "favoriteSetCount", "characterEmpty",
       "expressionView", "variantSwitcher", "frequentOnly", "expressionGrid", "gridSentinel",
@@ -40,6 +41,8 @@
       "fullImageLoading", "lightboxName", "lightboxCounter", "characterCardTemplate",
       "expressionCardTemplate",
     ]) elements[id] = document.getElementById(id);
+
+    observeStickyHeader();
 
     elements.characterSearch.addEventListener("input", renderSets);
     elements.backButton.addEventListener("click", showSetView);
@@ -85,6 +88,20 @@
       elements.statusPanel.hidden = true;
       elements.setupDialog.hidden = false;
       elements.cloudNameInput.focus();
+    }
+  }
+
+  function observeStickyHeader() {
+    const updateHeaderHeight = () => {
+      const height = Math.ceil(elements.appHeader.getBoundingClientRect().height);
+      document.documentElement.style.setProperty("--header-height", `${height}px`);
+    };
+    updateHeaderHeight();
+    if ("ResizeObserver" in window) {
+      headerResizeObserver = new ResizeObserver(updateHeaderHeight);
+      headerResizeObserver.observe(elements.appHeader);
+    } else {
+      window.addEventListener("resize", updateHeaderHeight);
     }
   }
 

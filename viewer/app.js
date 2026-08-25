@@ -133,9 +133,7 @@
     elements.characterView.hidden = true;
     elements.expressionView.hidden = true;
     elements.backButton.hidden = false;
-    elements.pageTitle.textContent = set.name;
-    elements.pageSubtitle.textContent = `${set.expressionCount || 0}件`;
-    elements.pageSubtitle.hidden = false;
+    updateSetHeading(set, set.expressionCount || 0);
     showLoading("表情差分を読み込んでいます…");
     try {
       const document = await fetchJson(resolveSetManifestUrl(set), { refreshToken: options.refreshToken });
@@ -152,10 +150,7 @@
             ? "normal"
             : document.variantOrder[0]
       );
-      elements.pageTitle.textContent = document.set.name;
-      elements.pageSubtitle.textContent = document.set.isFavorite
-        ? `★ 現行　${state.baseExpressions.length}件`
-        : `${state.baseExpressions.length}件`;
+      updateSetHeading(document.set, state.baseExpressions.length);
       elements.frequentOnly.checked = state.frequentOnly;
       renderVariantSwitcher();
       elements.statusPanel.hidden = true;
@@ -208,7 +203,7 @@
     for (const set of sets) {
       const card = elements.characterCardTemplate.content.firstElementChild.cloneNode(true);
       const monogram = card.querySelector(".character-monogram");
-      monogram.textContent = firstGlyph(set.name);
+      monogram.textContent = firstGlyph(setCharacterTitle(set));
       if (set.thumbnail) {
         const image = document.createElement("img");
         image.className = "character-thumbnail";
@@ -220,15 +215,36 @@
         monogram.append(image);
         if (imageObserver) imageObserver.observe(image); else image.src = image.dataset.src;
       }
-      card.querySelector("strong").textContent = set.name || "名称未設定";
+      card.querySelector("strong").textContent = setCharacterTitle(set);
       const subtitle = card.querySelector(".character-subtitle");
-      subtitle.textContent = set.isFavorite ? "★ 現行" : "";
-      subtitle.hidden = !set.isFavorite;
-      card.querySelector(".expression-count").textContent = `${set.expressionCount || 0}件`;
+      subtitle.textContent = setScenarioSubtitle(set);
+      subtitle.hidden = !subtitle.textContent;
+      card.querySelector(".expression-count").textContent = set.isFavorite
+        ? `★ 現行　${set.expressionCount || 0}件`
+        : `${set.expressionCount || 0}件`;
       card.addEventListener("click", () => openSet(set));
       fragment.append(card);
     }
     container.replaceChildren(fragment);
+  }
+
+  function setCharacterTitle(set) {
+    return String(set?.characterName || set?.name || "名称未設定");
+  }
+
+  function setScenarioSubtitle(set) {
+    return String(set?.scenarioName || "");
+  }
+
+  function updateSetHeading(set, expressionCount) {
+    const details = [];
+    const scenario = setScenarioSubtitle(set);
+    if (scenario) details.push(scenario);
+    if (set?.isFavorite) details.push("★ 現行");
+    details.push(`${expressionCount || 0}件`);
+    elements.pageTitle.textContent = setCharacterTitle(set);
+    elements.pageSubtitle.textContent = details.join("　");
+    elements.pageSubtitle.hidden = false;
   }
 
   function renderVariantSwitcher() {

@@ -132,8 +132,8 @@ h1 { margin: 0; font-size: clamp(1.42rem, 6vw, 2.15rem); line-height: 1.13; }
   top: calc(var(--safe-top) + var(--header-height) - 1px);
   display: grid;
   gap: 6px;
-  margin: -2px 0 12px;
-  padding: 6px 0 8px;
+  margin: -2px -14px 12px;
+  padding: 6px 14px 8px;
   background: linear-gradient(#16131f 82%, transparent);
 }
 .variant-switcher { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(58px, max-content); justify-content: start; gap: 6px; overflow-x: auto; }
@@ -178,6 +178,7 @@ h1 { margin: 0; font-size: clamp(1.42rem, 6vw, 2.15rem); line-height: 1.13; }
 @media (min-width: 560px) {
   .app-shell { padding-inline: 24px; }
   .app-header { margin-inline: -24px; padding-inline: 24px; }
+  .expression-controls { margin-inline: -24px; padding-inline: 24px; }
   .character-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .expression-grid { gap: 14px; }
 }

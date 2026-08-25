@@ -45,7 +45,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid rgba(181, 145, 25
   gap: 10px;
   margin-inline: -14px;
   padding: 18px 14px 14px;
-  background: linear-gradient(#16131f 72%, transparent);
+  background: #16131f;
 }
 
 .title-block { min-width: 0; flex: 1; }
@@ -129,7 +129,7 @@ h1 { margin: 0; font-size: clamp(1.42rem, 6vw, 2.15rem); line-height: 1.13; }
 .expression-controls {
   position: sticky;
   z-index: 15;
-  top: calc(var(--safe-top) + var(--header-height));
+  top: calc(var(--safe-top) + var(--header-height) - 1px);
   display: grid;
   gap: 6px;
   margin: -2px 0 12px;

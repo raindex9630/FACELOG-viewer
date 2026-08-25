@@ -8,11 +8,11 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https://res.cloudinary.com; connect-src 'self' https://res.cloudinary.com; style-src 'self'; script-src 'self'; manifest-src 'self';" />
     <title>表情差分</title>
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
-    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="manifest" href="manifest.webmanifest?v=__BUILD_VERSION__" />
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
-    <link rel="stylesheet" href="styles.css" />
-    <script src="config.js" defer></script>
-    <script src="app.js" defer></script>
+    <link rel="stylesheet" href="styles.css?v=__BUILD_VERSION__" />
+    <script src="config.js?v=__BUILD_VERSION__" defer></script>
+    <script src="app.js?v=__BUILD_VERSION__" defer></script>
   </head>
   <body>
     <div class="app-shell">
@@ -23,7 +23,9 @@
           <h1 id="pageTitle">表情差分</h1>
           <p id="pageSubtitle" class="page-subtitle" hidden></p>
         </div>
-        <button id="refreshButton" class="icon-button" type="button" aria-label="最新データを再読み込み">↻</button>
+        <button id="refreshButton" class="icon-button refresh-button" type="button" aria-label="Viewerと最新データを完全更新">
+          <span class="refresh-glyph" aria-hidden="true">↻</span>
+        </button>
       </header>
 
       <main>

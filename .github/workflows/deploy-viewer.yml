@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "viewer/**"
+      - "tests/**"
       - ".github/workflows/deploy-viewer.yml"
   workflow_dispatch:
 
@@ -32,10 +33,27 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
+      - name: Test viewer
+        run: |
+          node --check viewer/app.js
+          node --test tests/viewer-complete-refresh.test.cjs
+
+      - name: Prepare versioned viewer artifact
+        env:
+          BUILD_VERSION: ${{ github.sha }}
+        run: |
+          mkdir _site
+          cp -R viewer/. _site/
+          sed -i "s/__BUILD_VERSION__/${BUILD_VERSION}/g" _site/index.html
+          if grep -R "__BUILD_VERSION__" _site; then
+            echo "Build version placeholder was not replaced."
+            exit 1
+          fi
+
       - name: Upload viewer
         uses: actions/upload-pages-artifact@v4
         with:
-          path: "./viewer"
+          path: "./_site"
 
       - name: Deploy to GitHub Pages
         id: deployment

@@ -63,6 +63,10 @@ h1 { margin: 0; font-size: clamp(1.42rem, 6vw, 2.15rem); line-height: 1.13; }
   cursor: pointer;
 }
 .icon-button:active { transform: scale(0.96); }
+.icon-button:disabled { opacity: .58; cursor: wait; }
+.icon-button:disabled:active { transform: none; }
+.refresh-glyph { display: inline-block; }
+.refresh-button.is-refreshing .refresh-glyph { animation: spin .75s linear infinite; }
 
 .status-panel, .empty-state {
   min-height: 38vh;

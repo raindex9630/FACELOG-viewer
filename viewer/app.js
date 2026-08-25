@@ -3,6 +3,8 @@
 
   const config = window.FACELOG_VIEWER_CONFIG || {};
   const BATCH_SIZE = 60;
+  const VIEWER_CACHE_PREFIX = "facelog-viewer-";
+  const REFRESH_STATE_KEY = "facelog.refreshState";
   const state = {
     root: null,
     rootUrl: "",
@@ -18,6 +20,7 @@
     selectedVariant: null,
     frequentOnly: false,
     touchStart: null,
+    isRefreshing: false,
   };
 
   const elements = {};
@@ -40,7 +43,7 @@
 
     elements.characterSearch.addEventListener("input", renderSets);
     elements.backButton.addEventListener("click", showSetView);
-    elements.refreshButton.addEventListener("click", refreshCurrentView);
+    elements.refreshButton.addEventListener("click", completeRefresh);
     elements.frequentOnly.addEventListener("change", () => {
       state.frequentOnly = elements.frequentOnly.checked;
       resetExpressionGrid();
@@ -65,15 +68,19 @@
       ? new IntersectionObserver(loadNextBatch, { rootMargin: "500px 0px" })
       : null;
 
-    const suppliedManifest = new URLSearchParams(location.search).get("manifest");
-    const suppliedCloud = new URLSearchParams(location.search).get("cloud");
+    const query = new URLSearchParams(location.search);
+    const refreshToken = query.get("_refresh") || "";
+    const refreshResumeState = refreshToken ? takeRefreshResumeState() : null;
+    removeRefreshParameter();
+    const suppliedManifest = query.get("manifest");
+    const suppliedCloud = query.get("cloud");
     state.cloudName = suppliedCloud || config.cloudName || localStorage.getItem("facelog.cloudName") || "";
     if (suppliedManifest) {
       state.rootUrl = new URL(suppliedManifest, location.href).href;
-      loadRootManifest();
+      loadRootManifest({ refreshToken, resumeState: refreshResumeState });
     } else if (state.cloudName) {
       state.rootUrl = rawUrl(state.cloudName, config.rootManifestPublicId || "expression-viewer/manifests/root.json");
-      loadRootManifest();
+      loadRootManifest({ refreshToken, resumeState: refreshResumeState });
     } else {
       elements.statusPanel.hidden = true;
       elements.setupDialog.hidden = false;
@@ -95,22 +102,33 @@
     loadRootManifest();
   }
 
-  async function loadRootManifest() {
+  async function loadRootManifest(options = {}) {
     showLoading("同期済みデータを読み込んでいます…");
     try {
-      const root = await fetchJson(withCacheBust(state.rootUrl));
+      const root = await fetchJson(state.rootUrl, { refreshToken: options.refreshToken });
       validateRootManifest(root);
       state.root = root;
       state.cloudName = root.cloudName || state.cloudName;
       state.sets = root.sets;
-      showSetView();
+      const resumeSet = options.resumeState
+        ? findMatchingSet(state.sets, options.resumeState.set)
+        : null;
+      if (resumeSet) {
+        state.frequentOnly = Boolean(options.resumeState.frequentOnly);
+        await openSet(resumeSet, {
+          preferredVariant: options.resumeState.selectedVariant,
+          refreshToken: options.refreshToken,
+        });
+      } else {
+        showSetView();
+      }
     } catch (error) {
       showError(friendlyFetchError(error, "セット一覧を取得できませんでした。"));
     }
   }
 
   async function openSet(set, options = {}) {
-    const previousVariant = state.selectedVariant;
+    const previousVariant = options.preferredVariant || state.selectedVariant;
     state.currentSet = set;
     elements.characterView.hidden = true;
     elements.expressionView.hidden = true;
@@ -120,7 +138,7 @@
     elements.pageSubtitle.hidden = false;
     showLoading("表情差分を読み込んでいます…");
     try {
-      const document = await fetchJson(resolveSetManifestUrl(set));
+      const document = await fetchJson(resolveSetManifestUrl(set), { refreshToken: options.refreshToken });
       validateSetManifest(document);
       state.currentDocument = document;
       state.baseExpressions = document.expressions
@@ -128,7 +146,7 @@
         .sort((left, right) => Number(left.expression.order) - Number(right.expression.order))
         .map((item) => item.expression);
       state.selectedVariant = (
-        options.preserveVariant && document.variantOrder.includes(previousVariant)
+        previousVariant && (options.preserveVariant || options.preferredVariant) && document.variantOrder.includes(previousVariant)
           ? previousVariant
           : document.variantOrder.includes("normal")
             ? "normal"
@@ -400,14 +418,130 @@
     if (event.key === "ArrowRight") moveExpression(1);
   }
 
-  function refreshCurrentView() {
-    if (state.currentSet) openSet(state.currentSet, { preserveVariant: true });
-    else loadRootManifest();
+  async function completeRefresh() {
+    if (state.isRefreshing) return;
+    setRefreshButtonBusy(true);
+    showLoading("Viewerと最新データを完全更新しています…");
+    try {
+      await updateViewerServiceWorker();
+      await deleteViewerCaches();
+      const refreshToken = Date.now().toString();
+      const resumeState = await preflightLatestManifests(refreshToken);
+      saveRefreshResumeState(resumeState);
+      location.replace(buildRefreshUrl(location.href, refreshToken));
+    } catch (error) {
+      setRefreshButtonBusy(false);
+      showError(friendlyFetchError(error, "最新データを取得できませんでした。"));
+    }
   }
 
-  function resolveSetManifestUrl(set) {
-    if (set.manifestUrl) return new URL(set.manifestUrl, state.rootUrl).href;
-    return rawUrl(state.cloudName, set.manifestPublicId, set.manifestVersion);
+  function setRefreshButtonBusy(isBusy) {
+    state.isRefreshing = isBusy;
+    elements.refreshButton.disabled = isBusy;
+    elements.refreshButton.classList.toggle("is-refreshing", isBusy);
+    elements.refreshButton.setAttribute("aria-busy", String(isBusy));
+  }
+
+  async function updateViewerServiceWorker() {
+    if (!("serviceWorker" in navigator)) return;
+    const registration = await navigator.serviceWorker.getRegistration();
+    if (registration) await registration.update();
+  }
+
+  async function deleteViewerCaches() {
+    if (!("caches" in window)) return;
+    const cacheNames = await window.caches.keys();
+    const viewerCacheNames = cacheNames.filter(isViewerCacheName);
+    await Promise.all(viewerCacheNames.map((cacheName) => window.caches.delete(cacheName)));
+  }
+
+  function isViewerCacheName(cacheName) {
+    return typeof cacheName === "string" && cacheName.startsWith(VIEWER_CACHE_PREFIX);
+  }
+
+  async function preflightLatestManifests(refreshToken) {
+    if (!state.rootUrl) return null;
+    const root = await fetchJson(state.rootUrl, { refreshToken });
+    validateRootManifest(root);
+    if (!state.currentSet) return null;
+
+    const resumeState = createRefreshResumeState();
+    const currentSet = findMatchingSet(root.sets, resumeState.set);
+    if (!currentSet) return null;
+    const cloudName = root.cloudName || state.cloudName;
+    const document = await fetchJson(
+      resolveSetManifestUrl(currentSet, state.rootUrl, cloudName),
+      { refreshToken }
+    );
+    validateSetManifest(document);
+    return resumeState;
+  }
+
+  function createRefreshResumeState() {
+    return {
+      set: createSetIdentity(state.currentSet),
+      selectedVariant: state.selectedVariant,
+      frequentOnly: state.frequentOnly,
+    };
+  }
+
+  function createSetIdentity(set) {
+    const identity = {};
+    for (const key of ["id", "setId", "manifestPublicId", "manifestUrl", "name"]) {
+      if (set?.[key] !== undefined && set[key] !== null && set[key] !== "") identity[key] = set[key];
+    }
+    return identity;
+  }
+
+  function findMatchingSet(sets, identity) {
+    if (!Array.isArray(sets) || !identity) return null;
+    for (const key of ["id", "setId", "manifestPublicId", "manifestUrl", "name"]) {
+      if (identity[key] === undefined || identity[key] === null || identity[key] === "") continue;
+      const match = sets.find((set) => String(set?.[key]) === String(identity[key]));
+      if (match) return match;
+    }
+    return null;
+  }
+
+  function saveRefreshResumeState(resumeState) {
+    try {
+      if (resumeState) sessionStorage.setItem(REFRESH_STATE_KEY, JSON.stringify(resumeState));
+      else sessionStorage.removeItem(REFRESH_STATE_KEY);
+    } catch (_) {
+      // sessionStorageを利用できない環境でも、完全更新そのものは続行する。
+    }
+  }
+
+  function takeRefreshResumeState() {
+    try {
+      const value = sessionStorage.getItem(REFRESH_STATE_KEY);
+      sessionStorage.removeItem(REFRESH_STATE_KEY);
+      return value ? JSON.parse(value) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function removeRefreshParameter() {
+    const url = new URL(location.href);
+    if (!url.searchParams.has("_refresh")) return;
+    url.searchParams.delete("_refresh");
+    try {
+      history.replaceState(history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    } catch (_) {
+      // URLを整理できない環境でも、manifestの再取得とViewer起動は続行する。
+    }
+  }
+
+  function buildRefreshUrl(url, refreshToken) {
+    const value = new URL(url);
+    value.searchParams.set("_refresh", refreshToken);
+    return value.href;
+  }
+
+  function resolveSetManifestUrl(set, rootUrl = state.rootUrl, cloudName = state.cloudName) {
+    if (set.manifestUrl) return new URL(set.manifestUrl, rootUrl).href;
+    return rawUrl(cloudName, set.manifestPublicId, set.manifestVersion);
   }
 
   function thumbnailUrl(variant) {
@@ -442,15 +576,16 @@
     return String(publicId || "").split("/").map(encodeURIComponent).join("/");
   }
 
-  async function fetchJson(url) {
-    const response = await fetch(url, { cache: "no-store", headers: { Accept: "application/json" } });
+  async function fetchJson(url, options = {}) {
+    const requestUrl = options.refreshToken ? withRefreshToken(url, options.refreshToken) : url;
+    const response = await fetch(requestUrl, { cache: "no-store", headers: { Accept: "application/json" } });
     if (!response.ok) throw new Error(`http-${response.status}`);
     return response.json();
   }
 
-  function withCacheBust(url) {
+  function withRefreshToken(url, refreshToken) {
     const value = new URL(url, location.href);
-    value.searchParams.set("_", Date.now().toString());
+    value.searchParams.set("refresh", refreshToken);
     return value.href;
   }
 
@@ -509,10 +644,19 @@
 
   window.FaceLogViewer = {
     BATCH_SIZE,
+    VIEWER_CACHE_PREFIX,
+    buildRefreshUrl,
+    deleteViewerCaches,
     encodePublicId,
+    findMatchingSet,
     imageUrl,
+    isViewerCacheName,
+    preflightLatestManifests,
     rawUrl,
+    removeRefreshParameter,
     selectVariant,
     state,
+    updateViewerServiceWorker,
+    withRefreshToken,
   };
 })();

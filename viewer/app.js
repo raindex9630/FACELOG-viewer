@@ -170,6 +170,7 @@
   }
 
   function renderSets() {
+    if (imageObserver) imageObserver.disconnect();
     const query = elements.characterSearch.value.trim().toLocaleLowerCase("ja");
     const visible = state.sets.filter((set) =>
       `${set.name || ""} ${set.characterName || ""} ${set.scenarioName || ""}`
@@ -188,7 +189,19 @@
     const fragment = document.createDocumentFragment();
     for (const set of sets) {
       const card = elements.characterCardTemplate.content.firstElementChild.cloneNode(true);
-      card.querySelector(".character-monogram").textContent = firstGlyph(set.name);
+      const monogram = card.querySelector(".character-monogram");
+      monogram.textContent = firstGlyph(set.name);
+      if (set.thumbnail) {
+        const image = document.createElement("img");
+        image.className = "character-thumbnail";
+        image.alt = "";
+        image.loading = "lazy";
+        image.decoding = "async";
+        image.dataset.src = setThumbnailUrl(set.thumbnail);
+        image.addEventListener("error", () => image.remove(), { once: true });
+        monogram.append(image);
+        if (imageObserver) imageObserver.observe(image); else image.src = image.dataset.src;
+      }
       card.querySelector("strong").textContent = set.name || "名称未設定";
       const subtitle = card.querySelector(".character-subtitle");
       subtitle.textContent = set.isFavorite ? "★ 現行" : "";
@@ -400,6 +413,11 @@
   function thumbnailUrl(variant) {
     if (variant.iconUrl) return new URL(variant.iconUrl, state.rootUrl).href;
     return imageUrl(variant, "f_auto,q_auto");
+  }
+
+  function setThumbnailUrl(thumbnail) {
+    if (thumbnail.iconUrl) return new URL(thumbnail.iconUrl, state.rootUrl).href;
+    return imageUrl(thumbnail, "f_auto,q_auto,c_limit,w_192");
   }
 
   function fullImageUrl(variant) {

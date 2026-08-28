@@ -12,6 +12,7 @@
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --header-height: 78px;
+  --controls-height: 92px;
 }
 
 * { box-sizing: border-box; }
@@ -47,6 +48,15 @@ button:focus-visible, input:focus-visible { outline: 3px solid rgba(181, 145, 25
   padding: 18px 14px 14px;
   background: #16131f;
 }
+
+body.expression-mode .app-header {
+  position: fixed;
+  left: 50%;
+  width: min(100%, 920px);
+  margin-inline: 0;
+  transform: translateX(-50%);
+}
+body.expression-mode main { padding-top: var(--header-height); }
 
 .title-block { min-width: 0; flex: 1; }
 .eyebrow { margin: 0 0 3px; color: var(--accent); font-size: 0.67rem; font-weight: 800; letter-spacing: 0.14em; }
@@ -135,6 +145,16 @@ h1 { margin: 0; font-size: clamp(1.42rem, 6vw, 2.15rem); line-height: 1.13; }
   margin: -2px -14px 12px;
   padding: 6px 14px 8px;
   background: linear-gradient(#16131f 82%, transparent);
+}
+body.expression-mode .expression-controls {
+  position: fixed;
+  left: 50%;
+  width: min(100%, 920px);
+  margin: 0;
+  transform: translateX(-50%);
+}
+body.expression-mode #expressionView {
+  padding-top: var(--controls-height);
 }
 .variant-switcher { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(58px, max-content); justify-content: start; gap: 6px; overflow-x: auto; }
 .variant-button { min-height: 36px; padding: 4px 12px; border: 1px solid var(--line); border-radius: 11px; background: rgba(48, 41, 65, .88); font-size: .9rem; cursor: pointer; }

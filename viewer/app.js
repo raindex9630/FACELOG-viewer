@@ -35,7 +35,7 @@
       "appHeader", "backButton", "refreshButton", "pageTitle", "pageSubtitle", "statusPanel",
       "statusMessage", "characterView", "characterSearch", "updatedAt", "characterList",
       "favoriteSetSection", "favoriteSetList", "favoriteSetCount", "characterEmpty",
-      "expressionView", "variantSwitcher", "frequentOnly", "expressionGrid", "gridSentinel",
+      "expressionView", "expressionControls", "variantSwitcher", "frequentOnly", "expressionGrid", "gridSentinel",
       "expressionEmpty", "setupDialog", "setupForm", "cloudNameInput", "setupError",
       "lightbox", "closeLightbox", "previousExpression", "nextExpression", "fullImage",
       "fullImageLoading", "lightboxName", "lightboxCounter", "characterCardTemplate",
@@ -91,17 +91,23 @@
     }
   }
 
+  function updateStickyHeights() {
+    const headerHeight = Math.ceil(elements.appHeader.getBoundingClientRect().height);
+    const controlsHeight = Math.ceil(elements.expressionControls.getBoundingClientRect().height);
+    document.documentElement.style.setProperty("--header-height", `${headerHeight}px`);
+    if (controlsHeight) {
+      document.documentElement.style.setProperty("--controls-height", `${controlsHeight}px`);
+    }
+  }
+
   function observeStickyHeader() {
-    const updateHeaderHeight = () => {
-      const height = Math.ceil(elements.appHeader.getBoundingClientRect().height);
-      document.documentElement.style.setProperty("--header-height", `${height}px`);
-    };
-    updateHeaderHeight();
+    updateStickyHeights();
     if ("ResizeObserver" in window) {
-      headerResizeObserver = new ResizeObserver(updateHeaderHeight);
+      headerResizeObserver = new ResizeObserver(updateStickyHeights);
       headerResizeObserver.observe(elements.appHeader);
+      headerResizeObserver.observe(elements.expressionControls);
     } else {
-      window.addEventListener("resize", updateHeaderHeight);
+      window.addEventListener("resize", updateStickyHeights);
     }
   }
 
@@ -147,6 +153,7 @@
   async function openSet(set, options = {}) {
     const previousVariant = options.preferredVariant || state.selectedVariant;
     state.currentSet = set;
+    document.body.classList.add("expression-mode");
     elements.characterView.hidden = true;
     elements.expressionView.hidden = true;
     elements.backButton.hidden = false;
@@ -172,6 +179,7 @@
       renderVariantSwitcher();
       elements.statusPanel.hidden = true;
       elements.expressionView.hidden = false;
+      requestAnimationFrame(updateStickyHeights);
       resetExpressionGrid();
     } catch (error) {
       showError(friendlyFetchError(error, "表情一覧を取得できませんでした。"));
@@ -179,6 +187,7 @@
   }
 
   function showSetView() {
+    document.body.classList.remove("expression-mode");
     if (gridObserver) gridObserver.unobserve(elements.gridSentinel);
     if (imageObserver) imageObserver.disconnect();
     state.currentSet = null;
